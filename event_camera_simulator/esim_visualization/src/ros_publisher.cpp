@@ -134,7 +134,13 @@ void RosPublisher::pointcloudCallback(const PointCloudVector& pointclouds, Time 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr msg (new pcl::PointCloud<pcl::PointXYZRGB>);
     std::stringstream ss; ss << "cam" << i;
     pointCloudToMsg(pointclouds[i], ss.str(), t, msg);
-    pointcloud_pub_[i]->publish(msg);
+
+    /**
+     * NOTE: Fix for `pcl` 1.11 (Reference: https://github.com/RoboStack/ros-noetic/issues/159)
+     **/
+    sensor_msgs::PointCloud2 rosMsg;
+    pcl::toROSMsg(*msg, rosMsg);
+    pointcloud_pub_[i]->publish(rosMsg);
   }
 
   last_published_pointcloud_time_ = t;

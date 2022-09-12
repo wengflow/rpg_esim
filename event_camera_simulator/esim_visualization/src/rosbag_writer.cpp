@@ -80,8 +80,14 @@ void RosbagWriter::pointcloudCallback(const PointCloudVector& pointclouds, Time 
     pcl::PointCloud<pcl::PointXYZRGB>::Ptr msg (new pcl::PointCloud<pcl::PointXYZRGB>);
     std::stringstream ss; ss << "cam" << i;
     pointCloudToMsg(pointclouds[i], ss.str(), t, msg);
+
+    /**
+     * NOTE: Fix for `pcl` 1.11 (Reference: https://github.com/RoboStack/ros-noetic/issues/159)
+     **/
+    sensor_msgs::PointCloud2 rosMsg;
+    pcl::toROSMsg(*msg, rosMsg);
     bag_.write(getTopicName(topic_name_prefix_, i, "pointcloud"),
-               toRosTime(t), msg);
+               toRosTime(t), rosMsg);
   }
   last_published_pointcloud_time_ = t;
 }
