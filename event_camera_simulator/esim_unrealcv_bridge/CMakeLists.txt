@@ -3,6 +3,7 @@ project(esim_unrealcv_bridge)
 
 find_package(catkin_simple REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(Boost REQUIRED COMPONENTS system filesystem)
 include_directories(${OpenCV_INCLUDE_DIRS})
 catkin_simple()
 
@@ -17,7 +18,7 @@ set(SOURCES
 )
 
 cs_add_library(${PROJECT_NAME} ${SOURCES} ${HEADERS})
-target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${CMAKE_DL_LIBS} -lpthread -lboost_filesystem -lboost_system)
+target_link_libraries(${PROJECT_NAME} ${catkin_LIBRARIES} ${OpenCV_LIBRARIES} ${CMAKE_DL_LIBS} -lpthread ${Boost_LIBRARIES})
 
 ##########
 # TESTS #
