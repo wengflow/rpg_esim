@@ -12,10 +12,32 @@ void EventSimulator::init(const Image &img, Time time)
   VLOG(1) << "and contrast thresholds: C+ = " << config_.Cp << " , C- = " << config_.Cm;
   is_initialized_ = true;
   last_img_ = img.clone();
-  ref_values_ = img.clone();
-  last_event_timestamp_ = TimestampImage::zeros(img.size());
-  current_time_ = time;
+  last_time_ = time;
+  ref_it_ = img.clone();
+  ref_timestamp_ = TimestampImage::Constant(img.rows, img.cols, time);
   size_ = img.size();
+  leak_gradient_ = 1e-9 * config_.leak_rate_hz * config_.Cp;  // in log-intensity per nanoseconds
+
+  // initialize static per-pixel contrast sensitivity thresholds
+  constexpr ImageFloatType MINIMUM_CONTRAST_THRESHOLD = 0.01;
+  CHECK_GE(config_.sigma_Cp, 0.0);
+  CHECK_GE(config_.sigma_Cm, 0.0);
+
+  per_pixel_Cp_ = Image(img.size(), config_.Cp);
+  per_pixel_Cm_ = Image(img.size(), config_.Cm);
+  for (int y = 0; y < size_.height; ++y) {
+    for (int x = 0; x < size_.width; ++x) {
+      if (config_.sigma_Cp > 0) {
+        per_pixel_Cp_(y, x) += ze::sampleNormalDistribution<ImageFloatType>(false, 0, config_.sigma_Cp);
+        per_pixel_Cp_(y, x) = std::max(MINIMUM_CONTRAST_THRESHOLD, per_pixel_Cp_(y, x));
+      }
+      if (config_.sigma_Cm > 0) {
+        per_pixel_Cm_(y, x) += ze::sampleNormalDistribution<ImageFloatType>(false, 0, config_.sigma_Cm);
+        per_pixel_Cm_(y, x) = std::max(MINIMUM_CONTRAST_THRESHOLD, per_pixel_Cm_(y, x));
+      }
+    }
+  }
+
 }
 
 Events EventSimulator::imageCallback(const Image& img, Time time)
@@ -35,74 +57,87 @@ Events EventSimulator::imageCallback(const Image& img, Time time)
   }
 
   // For each pixel, check if new events need to be generated since the last image sample
-  static constexpr ImageFloatType tolerance = 1e-6;
+  static constexpr Time TIMESTAMP_TOLERANCE = 100;
   Events events;
-  Duration delta_t_ns = time - current_time_;
+  Duration delta_t_ns = time - last_time_;
 
   CHECK_GT(delta_t_ns, 0u);
   CHECK_EQ(img.size(), size_);
 
-  for (int y = 0; y < size_.height; ++y)
-  {
-    for (int x = 0; x < size_.width; ++x)
-    {
-      ImageFloatType itdt = preprocessed_img(y, x);
-      ImageFloatType it = last_img_(y, x);
-      ImageFloatType prev_cross = ref_values_(y, x);
+  for (int y = 0; y < size_.height; ++y) {
+    for (int x = 0; x < size_.width; ++x) {
+      FloatType itdt = preprocessed_img(y, x);
+      FloatType it = last_img_(y, x);
+      FloatType gradient_at_xy = (itdt - it) / delta_t_ns;
+      FloatType leaky_gradient_at_xy = gradient_at_xy + leak_gradient_;
+      FloatType pol = (leaky_gradient_at_xy >= 0) ? +1.0 : -1.0;
+      FloatType C = (pol > 0) ? per_pixel_Cp_(y, x) : per_pixel_Cm_(y, x);
 
-      if (std::fabs (it - itdt) > tolerance)
-      {
-        ImageFloatType pol = (itdt >= it) ? +1.0 : -1.0;
-        ImageFloatType C = (pol > 0) ? config_.Cp : config_.Cm;
-        ImageFloatType sigma_C = (pol > 0) ? config_.sigma_Cp : config_.sigma_Cm;
-        if(sigma_C > 0)
-        {
-          C += ze::sampleNormalDistribution<ImageFloatType>(false, 0, sigma_C);
-          constexpr ImageFloatType minimum_contrast_threshold = 0.01;
-          C = std::max(minimum_contrast_threshold, C);
+      while (ref_timestamp_(y, x) <= time) {
+        // update the reference log-intensity, if the reference timestamp has been updated
+        if (ref_timestamp_(y, x) > last_time_) {   // && (ref_timestamp_(y, x) <= time)
+          ref_it_(y, x) = it + gradient_at_xy * (ref_timestamp_(y, x) - last_time_);
         }
-        ImageFloatType curr_cross = prev_cross;
-        bool all_crossings = false;
 
-        do
-        {
-          curr_cross += pol * C;
+        // prevent undefined divide-by-zero behavior when computing intervals
+        if (leaky_gradient_at_xy == 0) {
+          break;
+        }
 
-          if ((pol > 0 && curr_cross > it && curr_cross <= itdt)
-              || (pol < 0 && curr_cross < it && curr_cross >= itdt))
-          {
-            Duration edt = (curr_cross - it) * delta_t_ns / (itdt - it);
-            Time t = current_time_ + edt;
+        // predict the event timestamp
+        Time event_timestamp;
+        if (ref_timestamp_(y, x) < last_time_) {
+          FloatType last_change_at_xy = it - ref_it_(y, x);
+          FloatType last_leaky_change_at_xy = last_change_at_xy + leak_gradient_ * (last_time_ - ref_timestamp_(y, x));
 
-            // check that pixel (x,y) is not currently in a "refractory" state
-            // i.e. |t-that last_timestamp(x,y)| >= refractory_period
-            const Time last_stamp_at_xy = ze::secToNanosec(last_event_timestamp_(y,x));
-            CHECK_GE(t, last_stamp_at_xy);
-            const Duration dt = t - last_stamp_at_xy;
-            if(last_event_timestamp_(y,x) == 0 || dt >= config_.refractory_period_ns)
-            {
-              events.push_back(Event(x, y, t, pol > 0));
-              last_event_timestamp_(y,x) = ze::nanosecToSecTrunc(t);
-            }
-            else
-            {
-              VLOG(3) << "Dropping event because time since last event  ("
-                      << dt << " ns) < refractory period ("
-                      << config_.refractory_period_ns << " ns).";
-            }
-            ref_values_(y,x) = curr_cross;
+          if (last_leaky_change_at_xy >= 0) {
+            CHECK_LT(last_leaky_change_at_xy, per_pixel_Cp_(y, x));
+          } else {
+            CHECK_LT(-last_leaky_change_at_xy, per_pixel_Cm_(y, x));
           }
-          else
-          {
-            all_crossings = true;
+
+          FloatType interval_from_last_time = (pol * C - last_leaky_change_at_xy) / leaky_gradient_at_xy;
+          CHECK_GT(interval_from_last_time, 0);
+          if (interval_from_last_time >= INT64_MAX - last_time_) {    // to prevent integer overflow from casting
+            break;
           }
-        } while (!all_crossings);
-      } // end tolerance
+          event_timestamp = last_time_ + static_cast<Time>(std::ceil(interval_from_last_time));
+        }
+        else {  // else if (ref_timestamp_(y, x) >= last_time_) {
+          FloatType interval_from_ref_ts = (pol * C) / leaky_gradient_at_xy;
+          CHECK_GT(interval_from_ref_ts, 0);
+          if (interval_from_ref_ts >= INT64_MAX - event_timestamp) {  // to prevent integer overflow from casting
+            break;
+          }
+          event_timestamp = ref_timestamp_(y, x) + static_cast<Time>(std::ceil(interval_from_ref_ts));
+        }
+        CHECK_GT(event_timestamp, last_time_);
+
+        // stop event generation, if the predicted event timestamp exceeds the current image timestamp
+        // & the maximum possible leaky change is smaller than the contrast sensitivity threshold
+        // (the latter condition is necessary as the computation of the predicted event timestamp 
+        //  is less numerically precise than that of the maximum possible leaky change)
+        FloatType max_change_at_xy = itdt - ref_it_(y, x);
+        FloatType max_leaky_change_at_xy = max_change_at_xy + leak_gradient_ * (time - ref_timestamp_(y, x));
+        if (event_timestamp > time){
+          if (max_leaky_change_at_xy * pol <= 0 || std::fabs(max_leaky_change_at_xy) < C) {
+            break;
+          }
+          CHECK_LT(event_timestamp, time + TIMESTAMP_TOLERANCE);
+        }
+
+        // save the generated event
+        events.push_back(Event(x, y, event_timestamp, pol > 0));
+        
+        // update the reference timestamp
+        ref_timestamp_(y, x) = event_timestamp + config_.refractory_period_ns;
+      }
+
     } // end for each pixel
   }
 
   // update simvars for next loop
-  current_time_ = time;
+  last_time_ = time;
   last_img_ = preprocessed_img.clone(); // it is now the latest image
 
   // Sort the events by increasing timestamps, since this is what

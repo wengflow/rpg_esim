@@ -25,16 +25,17 @@ public:
     double sigma_Cp;
     double sigma_Cm;
     Duration refractory_period_ns;
+    double leak_rate_hz;
     bool use_log_image;
     double log_eps;
   };
 
-  using TimestampImage = cv::Mat_<ze::real_t>;
+  using TimestampImage = Eigen::Matrix<Time, Eigen::Dynamic, Eigen::Dynamic>;
 
   EventSimulator(const Config& config)
     : config_(config),
       is_initialized_(false),
-      current_time_(0)
+      last_time_(0)
   {}
 
   void init(const Image& img, Time time);
@@ -42,10 +43,13 @@ public:
 
 private:
   bool is_initialized_;
-  Time current_time_;
-  Image ref_values_;
   Image last_img_;
-  TimestampImage last_event_timestamp_;
+  Time last_time_;
+  Image ref_it_;
+  TimestampImage ref_timestamp_;
+  Image per_pixel_Cp_;
+  Image per_pixel_Cm_;
+  FloatType leak_gradient_;
   cv::Size size_;
 
   Config config_;
