@@ -54,7 +54,7 @@ Events EventSimulator::imageCallback(const ColorImage& img, Time time)
   }
   else
   {
-    cv::cvtColor(img, preprocessed_img, cv::COLOR_RGB2GRAY);
+    cv::cvtColor(img, preprocessed_img, cv::COLOR_BGR2GRAY);
   }
 
   if(config_.use_log_image)

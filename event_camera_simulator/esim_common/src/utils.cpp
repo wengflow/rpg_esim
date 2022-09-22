@@ -115,7 +115,7 @@ FloatType maxPredictedAbsBrightnessChange(const ColorImagePtr& I, const OpticFlo
 {
   // Convert the color image into grayscale, and run the grayscale version
   ImagePtr I_grayscale = std::make_shared<Image>();
-  cv::cvtColor(*I, *I_grayscale, cv::COLOR_RGB2GRAY);
+  cv::cvtColor(*I, *I_grayscale, cv::COLOR_BGR2GRAY);
   return maxPredictedAbsBrightnessChange(I_grayscale, flow);
 }
 
