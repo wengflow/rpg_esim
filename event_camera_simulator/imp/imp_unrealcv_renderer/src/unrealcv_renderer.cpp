@@ -41,8 +41,8 @@ void UnrealCvRenderer::setCamera(const ze::Camera::Ptr& camera)
   const FloatType fx = intrinsics(0);
   const FloatType hfov_deg = 2 * std::atan(0.5 * (FloatType) camera_->width() / fx) * 180. / CV_PI;
 
-  client_->setCameraFOV(static_cast<float>(hfov_deg));
-  client_->setCameraSize(camera->width(), camera->height());
+  client_->setCameraFOV(UE_CAMERA_ID, static_cast<float>(hfov_deg));
+  client_->setCameraSize(UE_CAMERA_ID, camera->width(), camera->height());
 }
 
 
@@ -96,7 +96,7 @@ void UnrealCvRenderer::render(const Transformation& T_W_C, const ColorImagePtr& 
 
   VLOG(1) << yaw << " " << pitch << " " << roll;
 
-  CameraData cam_data = {0,
+  CameraData cam_data = {UE_CAMERA_ID,
                          pitch,
                          yaw,
                          roll,
@@ -105,7 +105,7 @@ void UnrealCvRenderer::render(const Transformation& T_W_C, const ColorImagePtr& 
                          z};
 
   client_->setCamera(cam_data);
-  cv::Mat img = client_->getImage(0);
+  cv::Mat img = client_->getImage(UE_CAMERA_ID);
   VLOG(5) << "Got image from the UnrealCV client";
 
   // (optionally) save raw RGB image to the output directory
@@ -131,7 +131,7 @@ void UnrealCvRenderer::render(const Transformation& T_W_C, const ColorImagePtr& 
   cv::resize(img, img, cv::Size(camera_->width(), camera_->height()));
   img.convertTo(*out_image, cv::DataType<ImageFloatType>::type, 1./255.);
 
-  cv::Mat depth = client_->getDepth(0);
+  cv::Mat depth = client_->getDepth(UE_CAMERA_ID);
   VLOG(5) << "Got depth map from the UnrealCV client";
   CHECK_EQ(depth.type(), CV_32F);
 

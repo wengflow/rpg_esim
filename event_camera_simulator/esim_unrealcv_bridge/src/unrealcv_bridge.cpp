@@ -136,33 +136,35 @@ cv::Mat UnrealCvClient::getDepth(uint32_t camid)
 
 void UnrealCvClient::setCamera(const CameraData & camera)
 {
-  std::string cam_pose_s = (boost::format("vset /camera/%i/pose %.5f %.5f %.5f %.5f %.5f %.5f") %
-                            camera.id %
-                            camera.x %
-                            camera.y %
-                            camera.z %
-                            camera.pitch %
-                            camera.yaw %
-                            camera.roll).str();
-
-  sendCommand(cam_pose_s);
+  std::string cam_location = (boost::format("vset /camera/%i/location %.5f %.5f %.5f") %
+                              camera.id %
+                              camera.x %
+                              camera.y %
+                              camera.z).str();
+  std::string cam_rotation = (boost::format("vset /camera/%i/rotation %.5f %.5f %.5f") %
+                              camera.id %
+                              camera.pitch %
+                              camera.yaw %
+                              camera.roll).str();
+  sendCommand(cam_location);
+  sendCommand(cam_rotation);
 }
 
-void UnrealCvClient::setCameraSize(int width, int height)
+void UnrealCvClient::setCameraSize(uint32_t camid, int width, int height)
 {
   VLOG(1) << "Setting the camera size to: " << width << "x" << height;
-  std::string req_size = (boost::format("vrun r.setres %dx%d") %
-                         width %
-                         height).str();
+  std::string req_size = (boost::format("vset /camera/%i/size %d %d") %
+                          camid %
+                          width %
+                          height).str();
   sendCommand(req_size);
 }
 
-void UnrealCvClient::setCameraFOV(float hfov_deg)
+void UnrealCvClient::setCameraFOV(uint32_t camid, float hfov_deg)
 {
   VLOG(1) << "Setting the camera horizontal field of view to: " << hfov_deg << " deg";
-  const int cam_id = 0;
-  std::string req_fov = (boost::format("vset /camera/%i/horizontal_fieldofview %.5f") %
-                         cam_id %
+  std::string req_fov = (boost::format("vset /camera/%i/fov %.5f") %
+                         camid %
                          hfov_deg).str();
   sendCommand(req_fov);
 }

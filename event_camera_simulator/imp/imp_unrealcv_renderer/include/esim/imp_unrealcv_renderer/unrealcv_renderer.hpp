@@ -9,6 +9,17 @@ class UnrealCvClient; // fwd
 class UnrealCvRenderer : public Renderer
 {
 public:
+  /**
+   * The Unreal Engine camera ID is set to 1 to circumvent issues on scene
+   * capture & object masks, in Unreal Engine > 4.16 (latest officially
+   * supported version by UnrealCV). This requires additional "Fusion Camera
+   * Actor"(s) added to the scene.
+   * 
+   * References:
+   * 1) https://github.com/unrealcv/unrealcv/issues/198
+   * 2) https://github.com/unrealcv/unrealcv/issues/186
+   */
+  const uint32_t UE_CAMERA_ID = 1;
 
   UnrealCvRenderer();
 

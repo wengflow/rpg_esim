@@ -30,7 +30,16 @@ struct CameraData {
   double_t z;
 };
 
-
+/**
+ * Refrain from using camera ID 0, since it has issues on scene capture & object
+ * masks, in Unreal Engine > 4.16 (latest officially supported version by
+ * UnrealCV). However, this requires additional "Fusion Camera Actor"(s) added
+ * to the scene, since the default camera is not used.
+ * 
+ * References:
+ * 1) https://github.com/unrealcv/unrealcv/issues/198
+ * 2) https://github.com/unrealcv/unrealcv/issues/186
+ */
 class UnrealCvClient {
 public:
   UnrealCvClient(std::string host, std::string port);
@@ -40,8 +49,8 @@ public:
   cv::Mat getImage(uint32_t camid);
   cv::Mat getDepth(uint32_t camid);
   void setCamera(const CameraData & camera);
-  void setCameraFOV(float hfov_deg);
-  void setCameraSize(int width, int height);
+  void setCameraFOV(uint32_t camid, float hfov_deg);
+  void setCameraSize(uint32_t camid, int width, int height);
 
 protected:
 
