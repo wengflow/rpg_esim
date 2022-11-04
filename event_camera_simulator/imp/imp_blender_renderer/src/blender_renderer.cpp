@@ -13,12 +13,12 @@ DEFINE_int32(blender_render_device_type, 0,
              "Compute device type for rendering the synthetic Blender scene. 0: CPU, 1: CUDA, 2: OptiX");
 DEFINE_int32(blender_render_device_id, 0,
              "Compute device ID for rendering the synthetic Blender scene.");
-DEFINE_int32(blender_render_color_space, 0,
-             "Color space of the Blender scene RGB renders. 0: Display (Filmic sRGB by default), 1: Linear");
-DEFINE_string(blender_temp_rgb_file, "/tmp/esim_blender_rgb",
-              "Filepath (image extension omitted) of the temporary Blender scene RGB render.");
-DEFINE_string(blender_temp_depth_file, "/tmp/esim_blender_depth",
-              "Filepath (suffix of 0000 & image extension omitted) of the temporary Blender scene depth render.");
+DEFINE_int32(blender_interm_color_space, 0,
+             "Color space of the intermediate output RGBA image. 0: Display (Filmic sRGB by default), 1: Linear");
+DEFINE_string(blender_interm_rgba_file, "/tmp/esim_blender_rgba",
+              "Filepath (image extension omitted) of the intermediate output RGBA image.");
+DEFINE_string(blender_interm_depth_file, "/tmp/esim_blender_depth",
+              "Filepath (suffix of 0000 & image extension omitted) of the intermediate output depth image.");
 
 namespace event_camera_simulator {
 
@@ -73,18 +73,16 @@ BlenderRenderer::BlenderRenderer()
   sendBpyCmd("tree = scene.node_tree");
 
   sendBpyCmd("render_layers = tree.nodes.new('CompositorNodeRLayers')");
-  sendBpyCmd("alpha_over = tree.nodes.new('CompositorNodeAlphaOver')");
-  sendBpyCmd("composite = tree.nodes.new('CompositorNodeComposite')");
   sendBpyCmd("combine_color = tree.nodes.new('CompositorNodeCombineColor')");
   sendBpyCmd("depth_output = tree.nodes.new('CompositorNodeOutputFile')");
 
-  // initialize RGB render image output settings
-  sendBpyCmd("scene.render.filepath = '" + FLAGS_blender_temp_rgb_file + "'");
+  // initialize RGBA render image output settings
+  sendBpyCmd("scene.render.filepath = '" + FLAGS_blender_interm_rgba_file + "'");
   sendBpyCmd("scene.render.use_file_extension = True");
   sendBpyCmd("scene.render.use_overwrite = True");
-  sendBpyCmd("scene.render.image_settings.color_mode = 'RGB'");
+  sendBpyCmd("scene.render.image_settings.color_mode = 'RGBA'");
 
-  switch (FLAGS_blender_render_color_space)
+  switch (FLAGS_blender_interm_color_space)
   {
   case 0: // Display
     sendBpyCmd("scene.render.image_settings.file_format = 'PNG'");
@@ -99,13 +97,13 @@ BlenderRenderer::BlenderRenderer()
     sendBpyCmd("scene.render.image_settings.use_zbuffer = False");
     break;
   default:
-    LOG(FATAL) << "Invalid color space of the Blender scene RGB renders: "
-               << FLAGS_blender_render_color_space;
+    LOG(FATAL) << "Invalid color space of the intermediate output RGBA image: "
+               << FLAGS_blender_interm_color_space;
     break;
   }
 
   // initialize depth render image output settings
-  boost::filesystem::path depth_path(FLAGS_blender_temp_depth_file);
+  boost::filesystem::path depth_path(FLAGS_blender_interm_depth_file);
   sendBpyCmd("depth_output.base_path = '" + depth_path.parent_path().string() + "'");
   sendBpyCmd("depth_output.file_slots[0].path = '" + depth_path.filename().string() + "'");
   sendBpyCmd("depth_output.file_slots[0].use_node_format = True");
@@ -120,16 +118,7 @@ BlenderRenderer::BlenderRenderer()
   // link compositing nodes
   sendBpyCmd("links = tree.links");
 
-  // alpha-composite white background
-  sendBpyCmd("links.new(render_layers.outputs['Image'], alpha_over.inputs[2])");
-  sendBpyCmd("links.new(render_layers.outputs['Alpha'], alpha_over.inputs['Fac'])");
-  sendBpyCmd("alpha_over.inputs[1].default_value = (1, 1, 1, 1)");
-
-  // output RGB image
-  sendBpyCmd("links.new(alpha_over.outputs['Image'], composite.inputs['Image'])");
-  sendBpyCmd("composite.use_alpha = False");
-
-  // output depth image
+  // output depth image (RGB image is output via the existing composite node)
   sendBpyCmd("combine_color.mode = 'RGB'");
   sendBpyCmd("links.new(render_layers.outputs['Depth'], combine_color.inputs['Red'])");
   sendBpyCmd("combine_color.inputs['Green'].default_value = 0");
@@ -235,30 +224,38 @@ void BlenderRenderer::render(const Transformation& T_W_C, const ColorImagePtr& o
              + std::to_string(T_W_Cblender.getRotation().y()) + ", "
              + std::to_string(T_W_Cblender.getRotation().z()) + ")");
 
-  // render the scene & save the RGB & depth images
+  // render the scene & save the RGBA & depth images
   sendBpyCmd("bpy.ops.render.render(write_still=True)");
 
-  // read and output the saved RGB image
-  switch (FLAGS_blender_render_color_space)
+  // read and output the saved RGBA image
+  cv::Mat bgra_img;
+  switch (FLAGS_blender_interm_color_space)
   {
   case 0: // Display
-  {
-    cv::Mat bgr_img = cv::imread(FLAGS_blender_temp_rgb_file + ".png");
-    bgr_img.convertTo(*out_image, cv::DataType<ImageFloatType>::type, 1./255.);
+    bgra_img = cv::imread(FLAGS_blender_interm_rgba_file + ".png",
+                          cv::IMREAD_UNCHANGED);
+    bgra_img.convertTo(bgra_img, cv::DataType<ImageFloatType>::type, 1./255.);
     break;
-  }
   case 1: // Linear
-    *out_image = cv::imread(FLAGS_blender_temp_rgb_file + ".exr",
-                            cv::IMREAD_UNCHANGED);
+    bgra_img = cv::imread(FLAGS_blender_interm_rgba_file + ".exr",
+                          cv::IMREAD_UNCHANGED);
     break;
   default:
-    LOG(FATAL) << "Invalid color space of the Blender scene RGB renders: "
-               << FLAGS_blender_render_color_space;
+    LOG(FATAL) << "Invalid color space of the intermediate output RGBA image: "
+               << FLAGS_blender_interm_color_space;
     break;
   }
 
+  // alpha-composite the intermediate image over a white background (in the output color space)
+  cv::Mat bgr_img, alpha_img;
+  cv::cvtColor(bgra_img, bgr_img, cv::COLOR_BGRA2BGR);
+  cv::extractChannel(bgra_img, alpha_img, 3);
+  cv::cvtColor(alpha_img, alpha_img, cv::COLOR_GRAY2BGR); // expand single-channel alpha image to three channels
+
+  *out_image = alpha_img.mul(bgr_img) + (1 - alpha_img);
+
   // read and output the saved depth image
-  cv::Mat depth_img = cv::imread(FLAGS_blender_temp_depth_file + "0000.exr",
+  cv::Mat depth_img = cv::imread(FLAGS_blender_interm_depth_file + "0000.exr",
                                  cv::IMREAD_UNCHANGED);
   cv::extractChannel(depth_img, *out_depthmap, 2);  // extract "Red" channel
 }
