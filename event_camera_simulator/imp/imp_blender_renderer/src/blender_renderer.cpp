@@ -240,10 +240,6 @@ void BlenderRenderer::render(const Transformation& T_W_C, const ColorImagePtr& o
     bgra_img = cv::imread(FLAGS_blender_interm_rgba_file + ".exr",
                           cv::IMREAD_UNCHANGED);
     break;
-  default:
-    LOG(FATAL) << "Invalid color space of the intermediate output RGBA image: "
-               << FLAGS_blender_interm_color_space;
-    break;
   }
 
   // alpha-composite the intermediate image over a white background (in the output color space)
@@ -251,8 +247,17 @@ void BlenderRenderer::render(const Transformation& T_W_C, const ColorImagePtr& o
   cv::cvtColor(bgra_img, bgr_img, cv::COLOR_BGRA2BGR);
   cv::extractChannel(bgra_img, alpha_img, 3);
   cv::cvtColor(alpha_img, alpha_img, cv::COLOR_GRAY2BGR); // expand single-channel alpha image to three channels
-
-  *out_image = alpha_img.mul(bgr_img) + (1 - alpha_img);
+  switch (FLAGS_blender_interm_color_space)
+  {
+  case 0: // Display
+    // straight alpha
+    *out_image = alpha_img.mul(bgr_img) + (1 - alpha_img);
+    break;
+  case 1: // Linear
+    // premultiplied alpha
+    *out_image = bgr_img + (1 - alpha_img);
+    break;
+  }
 
   // read and output the saved depth image
   cv::Mat depth_img = cv::imread(FLAGS_blender_interm_depth_file + "0000.exr",
