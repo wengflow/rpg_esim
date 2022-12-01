@@ -15,9 +15,19 @@ void EventSimulator::init(const Image &img, Time time)
   last_img_ = img.clone();
   last_time_ = time;
   ref_it_ = img.clone();
-  ref_timestamp_ = TimestampImage::Constant(img.rows, img.cols, time);
   size_ = img.size();
   leak_gradient_ = 1e-9 * config_.leak_rate_hz * config_.Cp;  // in log-intensity per nanoseconds
+
+  // initialize reference timestamps with the given timestamp plus a random
+  // offset bounded by the refractory period to desynchronize event generation
+  ref_timestamp_ = TimestampImage::Constant(img.rows, img.cols, time);
+  if (config_.refractory_period_ns > 0) {
+    for (int y = 0; y < size_.height; ++y) {
+      for (int x = 0; x < size_.width; ++x) {
+        ref_timestamp_(y, x) += ze::sampleUniformIntDistribution<Time>(false, 0, config_.refractory_period_ns - 1);
+      }
+    }
+  }
 
   // initialize static per-pixel contrast sensitivity thresholds
   constexpr ImageFloatType MINIMUM_CONTRAST_THRESHOLD = 0.01;
