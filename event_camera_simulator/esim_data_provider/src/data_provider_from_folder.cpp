@@ -23,7 +23,7 @@ DataProviderFromFolder::DataProviderFromFolder(const std::string& path_to_data_f
   camera_rig_ = std::make_shared<ze::CameraRig>(extrinsics, cameras, "camera");
 
   // Allocate memory for image data
-  sim_data_.images.emplace_back(ImagePtr(new Image(
+  sim_data_.images.emplace_back(ColorImagePtr(new ColorImage(
                                            cv::Size(camera_rig_->at(0).width(),
                                                     camera_rig_->at(0).height()))));
 

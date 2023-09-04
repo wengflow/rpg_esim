@@ -28,6 +28,7 @@ public:
     double leak_rate_hz;
     bool use_log_image;
     double log_eps;
+    bool simulate_color_events;
   };
 
   using TimestampImage = Eigen::Matrix<Time, Eigen::Dynamic, Eigen::Dynamic>;
@@ -39,9 +40,10 @@ public:
   {}
 
   void init(const Image& img, Time time);
-  Events imageCallback(const Image& img, Time time);
+  Events imageCallback(const ColorImage& img, Time time);
 
 private:
+
   bool is_initialized_;
   Image last_img_;
   Time last_time_;
