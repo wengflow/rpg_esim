@@ -17,6 +17,7 @@
   <depend>imp_panorama_renderer</depend>
   <depend>imp_opengl_renderer</depend>
   <depend>imp_unrealcv_renderer</depend>
+  <depend>imp_blender_renderer</depend>
   <depend>imp_multi_objects_2d</depend>
   <depend>esim_trajectory</depend>
   <depend>ze_vi_simulation</depend>
