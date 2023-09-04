@@ -13,8 +13,8 @@ repositories:
     version: master
   glog_catkin:
     type: git
-    url: https://github.com/ethz-asl/glog_catkin.git
-    version: master
+    url: https://github.com/wengflow/glog_catkin.git
+    version: esim
   eigen_catkin:
     type: git
     url: https://github.com/ethz-asl/eigen_catkin.git
