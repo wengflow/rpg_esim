@@ -5,8 +5,8 @@ repositories:
     version: master
   ze_oss:
     type: git
-    url: https://github.com/uzh-rpg/ze_oss.git
-    version: master
+    url: https://github.com/wengflow/ze_oss.git
+    version: esim
   gflags_catkin:
     type: git
     url: https://github.com/ethz-asl/gflags_catkin.git

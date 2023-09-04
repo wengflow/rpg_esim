@@ -1,5 +1,6 @@
 #include <esim/trajectory/trajectory_factory.hpp>
 #include <ze/common/csv_trajectory.hpp>
+#include <ze/common/csv_trajectory_rotvec.hpp>
 #include <ze/common/logging.hpp>
 
 DEFINE_int32(trajectory_type, 0, " 0: Random spline trajectory, 1: Load trajectory from CSV file");
@@ -78,6 +79,10 @@ DEFINE_string(trajectory_dynamic_objects_csv_dir, "",
 
 DEFINE_string(trajectory_dynamic_objects_csv_file, "",
               "CSV file containing the trajectory");
+
+DEFINE_int32(trajectory_csv_file_rotation_repr, 0,
+              "Rotation representation used in the trajectory CSV file."
+              "0: quaternion, 1: rotation vector/angle-axis");
 
 namespace event_camera_simulator {
 
@@ -160,24 +165,10 @@ std::tuple<ze::TrajectorySimulator::Ptr, std::vector<ze::TrajectorySimulator::Pt
         case 1: // Load from CSV file
         {
             // Create trajectory:
-            ze::PoseSeries pose_series;
-
-            LOG(INFO) << "Reading trajectory from CSV file: " << csv_path;
-            pose_series.load(csv_path);
-            
-            ze::StampedTransformationVector poses = pose_series.getStampedTransformationVector();
-
-            // Set start time of trajectory to zero.
-            const int64_t offset = poses.at(0).first;
-            for (ze::StampedTransformation& it : poses)
-            {
-                it.first -= offset;
-            }
-
-            LOG(INFO) << "Initializing spline from trajectory (this may take some sime)...";
-
             int spline_order, num_spline_segments;
             double lambda;
+            std::shared_ptr<ze::BSplinePoseMinimalRotationVector> bs;
+
             if (dynamic_object)
             {
                 spline_order = FLAGS_trajectory_dynamic_objects_spline_order;
@@ -190,10 +181,51 @@ std::tuple<ze::TrajectorySimulator::Ptr, std::vector<ze::TrajectorySimulator::Pt
                 num_spline_segments = FLAGS_trajectory_num_spline_segments;
                 lambda = FLAGS_trajectory_lambda;
             }
+            bs = std::make_shared<ze::BSplinePoseMinimalRotationVector>(spline_order);
 
-            std::shared_ptr<ze::BSplinePoseMinimalRotationVector> bs =
-                std::make_shared<ze::BSplinePoseMinimalRotationVector>(spline_order);
-            bs->initPoseSplinePoses(poses, num_spline_segments, lambda);
+            LOG(INFO) << "Reading trajectory from CSV file: " << csv_path;
+            if (FLAGS_trajectory_csv_file_rotation_repr == 0)       // quaternion
+            {
+                ze::PoseSeries pose_series;
+                pose_series.load(csv_path);
+                ze::StampedTransformationVector poses = pose_series.getStampedTransformationVector();
+
+                // Set start time of trajectory to zero.
+                const int64_t offset = poses.at(0).first;
+                for (ze::StampedTransformation& it : poses)
+                {
+                    it.first -= offset;
+                }
+
+                LOG(INFO) << "Initializing spline from trajectory (this may take some sime)...";
+                bs->initPoseSplinePoses(poses, num_spline_segments, lambda);
+            }
+            else if (FLAGS_trajectory_csv_file_rotation_repr == 1)  // rotation vector / angle-axis
+            {
+                ze::PoseSeriesRotVec pose_series;
+                pose_series.load(csv_path);
+
+                ze::StampedRotVecTransformations stamped_poses = pose_series.getStampedRotVecTransformations();
+                ze::Stamps stamps_ns = stamped_poses.first;
+                ze::RotVecTransformations poses = stamped_poses.second;
+
+                // Set start time of trajectory to zero.
+                stamps_ns.array() -= stamps_ns(0);
+
+                // Convert timestamps from nanoseconds to seconds.
+                ze::VectorX stamps_s(stamps_ns.size());
+                for (size_t i = 0; i < stamps_s.size(); ++i)
+                {
+                    stamps_s(i) = ze::nanosecToSecTrunc(stamps_ns(i));
+                }
+
+                LOG(INFO) << "Initializing spline from trajectory (this may take some sime)...";
+                bs->initPoseSpline3(stamps_s, poses, num_spline_segments, lambda);
+            }
+            else {
+                LOG(FATAL) << "CSV file rotation representation is not known.";
+            }
+
             if (dynamic_object)
             {
                 trajectories_dynamic_objects.push_back(std::make_shared<ze::SplineTrajectorySimulator>(bs));
