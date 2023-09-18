@@ -1,0 +1,31 @@
+name: esim
+channels:
+  - conda-forge
+  - robostack
+  - robostack-experimental
+  - defaults
+dependencies:
+  # Robostack ROS Noetic Dependencies
+  - python=3.8
+  - ros-noetic-desktop=1.5.0
+  - compilers=1.4.2
+  - cmake=3.23.1
+  - pkg-config=0.29.2
+  - make=4.3
+  - ninja=1.11.0
+  - colcon-common-extensions=0.3.0
+  - catkin_tools=0.8.5
+  - rosdep=0.21.0
+  - py-opencv=4.5.2   # Fix OpenCV version for identical imread() RGB-to-grayscale behaviour
+
+  # ESIM Dependencies
+  - vcstool=0.3.0
+  - ros-noetic-pcl-ros=1.7.2
+  - ros-noetic-hector-trajectory-server=0.5.2
+  - glfw=3.3.7
+  - glm=0.9.9.4
+  - cppzmq=4.8.1
+
+  # `glog_catkin` Dependencies
+  - automake=1.16.5   # Reference: https://github.com/buffer/pylibemu/issues/24#issuecomment-434268519
+  - autoconf=2.69     # Reference: https://github.com/ethz-asl/glog_catkin/issues/27#issuecomment-384325459
