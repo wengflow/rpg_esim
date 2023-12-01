@@ -26,6 +26,26 @@ DEFINE_int64(refractory_period_ns, 0,
 DEFINE_double(leak_rate_hz, 0.0,
               "Nominal rate of ON leak events, in Hz");
 
+DEFINE_double(intensity_cutoff_freq_hz_prop_constant,
+              std::numeric_limits<double>::infinity(),
+              "The proportionality constant of the pixel intensity and its"
+              " associated cutoff frequency in Hz");
+
+DEFINE_double(I_pr_cutoff_freq_hz, std::numeric_limits<double>::infinity(),
+              "Cutoff frequency associated to the photoreceptor bias current"
+              " `I_pr`, in Hz");
+
+DEFINE_double(I_sf_cutoff_freq_hz, std::numeric_limits<double>::infinity(),
+              "Cutoff frequency of the source follower buffer, associated to"
+              " the source follower buffer bias current `I_sf`, in Hz");
+
+DEFINE_double(chg_amp_cutoff_freq_hz, std::numeric_limits<double>::infinity(),
+              "Cutoff frequency of the change/differencing amplifier, in Hz");
+
+DEFINE_double(hpf_cutoff_freq_hz, 0.0,
+              "Cutoff frequency of the high-pass filter present in certain"
+              " event cameras, in Hz");
+
 DEFINE_double(exposure_time_ms, 10.0,
               "Exposure time in milliseconds, used to simulate motion blur");
 
@@ -65,6 +85,12 @@ int main(int argc, char** argv)
   event_sim_config.sigma_Cm = FLAGS_contrast_threshold_sigma_neg;
   event_sim_config.refractory_period_ns = FLAGS_refractory_period_ns;
   event_sim_config.leak_rate_hz = FLAGS_leak_rate_hz;
+  event_sim_config.intensity_cutoff_freq_hz_prop_constant = (
+        FLAGS_intensity_cutoff_freq_hz_prop_constant);
+  event_sim_config.I_pr_cutoff_freq_hz = FLAGS_I_pr_cutoff_freq_hz;
+  event_sim_config.I_sf_cutoff_freq_hz = FLAGS_I_sf_cutoff_freq_hz;
+  event_sim_config.chg_amp_cutoff_freq_hz = FLAGS_chg_amp_cutoff_freq_hz;
+  event_sim_config.hpf_cutoff_freq_hz = FLAGS_hpf_cutoff_freq_hz;
   event_sim_config.use_log_image = FLAGS_use_log_image;
   event_sim_config.log_eps = FLAGS_log_eps;
   event_sim_config.simulate_color_events = FLAGS_simulate_color_events;

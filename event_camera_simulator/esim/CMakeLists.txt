@@ -9,12 +9,14 @@ set(HEADERS
     include/esim/esim/simulator.hpp
     include/esim/esim/event_simulator.hpp
     include/esim/esim/camera_simulator.hpp
+    include/esim/esim/control.hpp
 )
 
 set(SOURCES
     src/simulator.cpp
     src/event_simulator.cpp
     src/camera_simulator.cpp
+    src/control.cpp
 )
 
 cs_add_library(${PROJECT_NAME} ${SOURCES} ${HEADERS})
