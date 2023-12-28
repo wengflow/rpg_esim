@@ -41,6 +41,7 @@ using uint16_t = ze::uint16_t;
 using Time = ze::int64_t;
 using Duration = ze::uint64_t;
 using Image = cv::Mat_<ImageFloatType>;
+using FloatTypeImage = cv::Mat_<FloatType>;
 using ColorImage = cv::Mat_<cv::Vec<ImageFloatType, 3>>;
 using ImagePtr = std::shared_ptr<Image>;
 using ColorImagePtr = std::shared_ptr<ColorImage>;
