@@ -26,25 +26,61 @@ DEFINE_int64(refractory_period_ns, 0,
 DEFINE_double(leak_rate_hz, 0.0,
               "Nominal rate of ON leak events, in Hz");
 
-DEFINE_double(intensity_cutoff_freq_hz_prop_constant,
-              std::numeric_limits<double>::infinity(),
-              "The proportionality constant of the pixel intensity and its"
-              " associated cutoff frequency in Hz");
+DEFINE_double(I_p_to_intensity_ratio_fa, std::numeric_limits<double>::infinity(),
+              "Ratio of the signal photocurrent `I_p`, in fA, to image pixel"
+              " intensity `it`, `I_p_to_it_ratio`");
 
-DEFINE_double(I_pr_cutoff_freq_hz, std::numeric_limits<double>::infinity(),
-              "Cutoff frequency associated to the photoreceptor bias current"
-              " `I_pr`, in Hz");
+DEFINE_double(dark_current_fa, 0.0,
+              "Photodiode dark current `I_dark`, in fA. The photocurrent"
+              " `I = I_p + I_dark`. When `I_p_to_it_ratio` approaches"
+              " infinity, then `I_dark` is effectively 0 / dark current"
+              " -equivalent image pixel intensity (i.e. dark intensity)"
+              " `dark_it = I_dark / I_p_to_it_ratio` is 0.");
 
-DEFINE_double(I_sf_cutoff_freq_hz, std::numeric_limits<double>::infinity(),
-              "Cutoff frequency of the source follower buffer, associated to"
-              " the source follower buffer bias current `I_sf`, in Hz");
+DEFINE_double(amplifier_gain, std::numeric_limits<double>::infinity(),
+              "Amplifier gain of the photoreceptor circuit `A_amp`");
 
-DEFINE_double(chg_amp_cutoff_freq_hz, std::numeric_limits<double>::infinity(),
-              "Cutoff frequency of the change/differencing amplifier, in Hz");
+DEFINE_double(back_gate_coeff, 0.7,
+              "Back-gate coefficient `kappa`. The closed-loop gain of the"
+              " photoreceptor circuit `A_cl = 1 / kappa`, and the total loop"
+              " gain of the photoreceptor circuit `A_loop = A_amp / A_cl`.");
 
-DEFINE_double(hpf_cutoff_freq_hz, 0.0,
-              "Cutoff frequency of the high-pass filter present in certain"
-              " event cameras, in Hz");
+DEFINE_double(thermal_voltage_mv, 25,
+              "Thermal voltage `V_T`, in mV");
+
+DEFINE_double(photodiode_cap_ff, 0.0,
+              "(Lumped) Parasitic capacitance on the photodiode / input node of"
+              " the photoreceptor circuit `C_p`, in fF. The time constant"
+              " associated to the input node of the photoreceptor circuit"
+              " `tau_in = C_p * V_T / I = Q_in / I`.");
+
+DEFINE_double(miller_cap_ff, 0.0,
+              "Miller capacitance in the photoreceptor circuit `C_mil`, in fF."
+              " In the absence of a cascode transistor, `C_mil = C_fb + C_n`,"
+              " where `C_fb` is the Miller capacitance from the gate to the"
+              " source of the feedback transistor M_fb, and `C_n` is the Miller"
+              " capacitance from the gate to the drain of the inverting"
+              " amplifier transistor M_n. Else, `C_mil = C_fb`. "
+              " The time constant associated to the Miller capacitance"
+              " `tau_mil = C_mil * V_T / I = Q_mil / I`.");
+
+DEFINE_double(output_time_const_us, 0.0,
+              "Time constant `tau_out` associated to the output node of the"
+              " photoreceptor circuit / photoreceptor bias current `I_pr`, in"
+              " microseconds");
+
+DEFINE_double(lower_cutoff_freq_hz, 0.0,
+              "Lower cutoff frequency of the pixel circuit / high-pass filter"
+              " present in certain event cameras `f_c_lower`, in Hz");
+
+DEFINE_double(sf_cutoff_freq_hz, std::numeric_limits<double>::infinity(),
+              "(Upper) Cutoff frequency of the source follower buffer"
+              " `f_c_sf`, associated to the source follower buffer bias current"
+              " `I_sf`, in Hz");
+
+DEFINE_double(diff_amp_cutoff_freq_hz, std::numeric_limits<double>::infinity(),
+              "(Upper) Cutoff frequency of the differencing/change amplifier"
+              " `f_c_diff`, in Hz");
 
 DEFINE_double(exposure_time_ms, 10.0,
               "Exposure time in milliseconds, used to simulate motion blur");
@@ -85,15 +121,23 @@ int main(int argc, char** argv)
   event_sim_config.sigma_Cm = FLAGS_contrast_threshold_sigma_neg;
   event_sim_config.refractory_period_ns = FLAGS_refractory_period_ns;
   event_sim_config.leak_rate_hz = FLAGS_leak_rate_hz;
-  event_sim_config.intensity_cutoff_freq_hz_prop_constant = (
-        FLAGS_intensity_cutoff_freq_hz_prop_constant);
-  event_sim_config.I_pr_cutoff_freq_hz = FLAGS_I_pr_cutoff_freq_hz;
-  event_sim_config.I_sf_cutoff_freq_hz = FLAGS_I_sf_cutoff_freq_hz;
-  event_sim_config.chg_amp_cutoff_freq_hz = FLAGS_chg_amp_cutoff_freq_hz;
-  event_sim_config.hpf_cutoff_freq_hz = FLAGS_hpf_cutoff_freq_hz;
+
+  event_sim_config.I_p_to_it_ratio_fa = FLAGS_I_p_to_intensity_ratio_fa;
+  event_sim_config.I_dark_fa = FLAGS_dark_current_fa;
+  event_sim_config.A_amp = FLAGS_amplifier_gain;
+  event_sim_config.kappa = FLAGS_back_gate_coeff;
+  event_sim_config.V_T_mv = FLAGS_thermal_voltage_mv;
+  event_sim_config.C_p_ff = FLAGS_photodiode_cap_ff;
+  event_sim_config.C_mil_ff = FLAGS_miller_cap_ff;
+  event_sim_config.tau_out_us = FLAGS_output_time_const_us;
+  event_sim_config.f_c_lower_hz = FLAGS_lower_cutoff_freq_hz;
+  event_sim_config.f_c_sf_hz = FLAGS_sf_cutoff_freq_hz;
+  event_sim_config.f_c_diff_hz = FLAGS_diff_amp_cutoff_freq_hz;
+
   event_sim_config.use_log_image = FLAGS_use_log_image;
   event_sim_config.log_eps = FLAGS_log_eps;
   event_sim_config.simulate_color_events = FLAGS_simulate_color_events;
+
   std::shared_ptr<Simulator> sim;
   sim.reset(new Simulator(data_provider_->numCameras(),
                           event_sim_config,
