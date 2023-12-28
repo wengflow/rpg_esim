@@ -141,20 +141,21 @@ Events EventSimulator::imageCallback(const ColorImage& color_img, Time time)
 
           FloatType interval_from_last_time = (pol * C - last_leaky_change_at_xy) / leaky_gradient_at_xy;
           CHECK_GT(interval_from_last_time, 0);
-          if (interval_from_last_time >= INT64_MAX - last_time_) {    // to prevent integer overflow from casting
+          if (interval_from_last_time >= INT64_MAX - last_time_) {        // to prevent integer overflow from casting
             break;
           }
           event_timestamp = last_time_ + static_cast<Time>(std::ceil(interval_from_last_time));
+          CHECK_GT(event_timestamp, last_time_);
         }
         else {  // else if (ref_timestamp_(y, x) >= last_time_) {
           FloatType interval_from_ref_ts = (pol * C) / leaky_gradient_at_xy;
           CHECK_GT(interval_from_ref_ts, 0);
-          if (interval_from_ref_ts >= INT64_MAX - event_timestamp) {  // to prevent integer overflow from casting
+          if (interval_from_ref_ts >= INT64_MAX - ref_timestamp_(y, x)) { // to prevent integer overflow from casting
             break;
           }
           event_timestamp = ref_timestamp_(y, x) + static_cast<Time>(std::ceil(interval_from_ref_ts));
+          CHECK_GT(event_timestamp, ref_timestamp_(y, x));
         }
-        CHECK_GT(event_timestamp, last_time_);
 
         // stop event generation, if the predicted event timestamp exceeds the current image timestamp
         // & the maximum possible leaky change is smaller than the contrast sensitivity threshold
