@@ -1,29 +1,38 @@
 #pragma once
 
+#include <complex>
+#include <vector>
 #include <Eigen/Core>
 #include <esim/common/types.hpp>
 
 namespace control {
 
-using MatrixXs = Eigen::Matrix<FloatType, Eigen::Dynamic, Eigen::Dynamic>;
-using VectorXs = Eigen::Matrix<FloatType, Eigen::Dynamic, 1>;
-using RowVectorXs = Eigen::Matrix<FloatType, 1, Eigen::Dynamic>;
+using Scalar = FloatType;
 
-using ArrayXXs = Eigen::Array<FloatType, Eigen::Dynamic, Eigen::Dynamic>;
-using ArrayXs = Eigen::Array<FloatType, Eigen::Dynamic, 1>;
-using Array1Xs = Eigen::Array<FloatType, 1, Eigen::Dynamic>;
+using MatrixXs = Eigen::Matrix<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
+using VectorXs = Eigen::Matrix<Scalar, Eigen::Dynamic, 1>;
+using RowVectorXs = Eigen::Matrix<Scalar, 1, Eigen::Dynamic>;
+
+using ArrayXXs = Eigen::Array<Scalar, Eigen::Dynamic, Eigen::Dynamic>;
+using ArrayXs = Eigen::Array<Scalar, Eigen::Dynamic, 1>;
+using Array1Xs = Eigen::Array<Scalar, 1, Eigen::Dynamic>;
+
+using ComplexScalar = std::complex<Scalar>;
+using ArrayXXcs = Eigen::Array<ComplexScalar, Eigen::Dynamic, Eigen::Dynamic>;
+using ArrayXcs = Eigen::Array<ComplexScalar, Eigen::Dynamic, 1>;
+using Array1Xcs = Eigen::Array<ComplexScalar, 1, Eigen::Dynamic>;
 
 /* 
  * Linear Time-Invariant (LTI) system state-space model in standard form:
- *  1. Continuous
- *      x-dot(t) = A x(t) + B u(t)
- *          y(t) = C x(t) + D u(t)
- *  2. Discrete
- *      x[k+1] = A x[k] + B u[k]
- *        y[k] = C x[k] + D u[k]
+ *    1. Continuous
+ *        x-dot(t) = A x(t) + B u(t)
+ *            y(t) = C x(t) + D u(t)
+ *    2. Discrete
+ *        x[k+1] = A x[k] + B u[k]
+ *          y[k] = C x[k] + D u[k]
  * or discrete LTI system state-space model in non-standard form:
- *      x[k+1] = A x[k] + B u[k] + B' u[k+1]
- *        y[k] = C x[k] + D u[k]
+ *        x[k+1] = A x[k] + B u[k] + B-tilde u[k+1]
+ *          y[k] = C x[k] + D u[k]
  */
 class LtiStateSpace{
  public:
@@ -34,18 +43,61 @@ class LtiStateSpace{
                 const Eigen::Ref<const MatrixXs>& D);
   LtiStateSpace(const Eigen::Ref<const MatrixXs>& A,
                 const Eigen::Ref<const MatrixXs>& B,
-                const Eigen::Ref<const MatrixXs>& B_prime,
+                const Eigen::Ref<const MatrixXs>& B_tilde,
                 const Eigen::Ref<const MatrixXs>& C,
                 const Eigen::Ref<const MatrixXs>& D);
-  int N() const;
-  int M() const;
+  bool isInit() const;
+  unsigned int N_u() const;
+  unsigned int N_x() const;
+  unsigned int N_y() const;
 
   // TODO: prevent invalid modifications
-  MatrixXs A;
-  MatrixXs B;
-  MatrixXs B_prime;
-  MatrixXs C;
-  MatrixXs D;
+  MatrixXs A;                                                                     // (N_x(), N_x())
+  MatrixXs B;                                                                     // (N_x(), N_u())
+  MatrixXs B_tilde;                                                               // (N_x(), N_u())
+  MatrixXs C;                                                                     // (N_y(), N_x())
+  MatrixXs D;                                                                     // (N_y(), N_u())
+};
+
+/* 
+ * Batched variant of `LtiStateSpace`. For a batch size of `N_b`:
+ *    1. `A[i]` gives an `N_b x N_x` array, where each row corresponds to the
+ *       i-th row of `A` for different `LtiStateSpace` instances in the batch,
+ *       and `0 <= i < N_x`
+ *    2. `B/B_tilde[i]` gives an `N_b x N_u` array, where each row corresponds
+ *       to the i-th row of `B/B_tilde` for different `LtiStateSpace` instances
+ *       in the batch, and `0 <= i < N_x`
+ *    3. `C[i]` gives an `N_b x N_x` array, where each row corresponds to the
+ *       i-th row of `C` for different `LtiStateSpace` instances in the batch,
+ *       and `0 <= i < N_y`
+ *    4. `D[i]` gives an `N_b x N_u` array, where each row corresponds to the
+ *       i-th row of `A` for different `LtiStateSpace` instances in the batch,
+ *       and `0 <= i < N_y`
+ */
+class BatchLtiStateSpace{
+ public:
+  BatchLtiStateSpace() = default;
+  BatchLtiStateSpace(const std::vector<ArrayXXs>& A,
+                     const std::vector<ArrayXXs>& B,
+                     const std::vector<ArrayXXs>& C,
+                     const std::vector<ArrayXXs>& D);
+  BatchLtiStateSpace(const std::vector<ArrayXXs>& A,
+                     const std::vector<ArrayXXs>& B,
+                     const std::vector<ArrayXXs>& B_tilde,
+                     const std::vector<ArrayXXs>& C,
+                     const std::vector<ArrayXXs>& D);
+  bool isInit() const;
+  unsigned int N_b() const;
+  unsigned int N_u() const;
+  unsigned int N_x() const;
+  unsigned int N_y() const;
+
+  // TODO: prevent invalid modifications
+  std::vector<ArrayXXs> A;                                                        // (N_x()) vector of (N_b(), N_x()) arrays
+  std::vector<ArrayXXs> B;                                                        // (N_x()) vector of (N_b(), N_u()) arrays
+  std::vector<ArrayXXs> B_tilde;                                                  // (N_x()) vector of (N_b(), N_u()) arrays
+  std::vector<ArrayXXs> C;                                                        // (N_y()) vector of (N_b(), N_x()) arrays
+  std::vector<ArrayXXs> D;                                                        // (N_y()) vector of (N_b(), N_u()) arrays
 };
 
 /* 
@@ -60,8 +112,8 @@ class LtiStateSpace{
  *   2. `scipy.signal.cont2discrete(method='foh')`
  *      (https://github.com/scipy/scipy/blob/v1.11.3/scipy/signal/_lti_conversion.py#L498-L518)
  */
-LtiStateSpace foh_cont2discrete(const LtiStateSpace& cont_sys, FloatType dt,
-                                bool is_state_preserved = false);
+LtiStateSpace fohCont2discrete(const LtiStateSpace& cont_sys, FloatType dt,
+                               bool is_state_preserved = false);
 
 class DiscreteLtiFilter{
  public:
@@ -69,45 +121,32 @@ class DiscreteLtiFilter{
   DiscreteLtiFilter(const LtiStateSpace& system,
                     const Eigen::Ref<const MatrixXs>& init_input,
                     const Eigen::Ref<const MatrixXs>& init_state);
-  MatrixXs update(const Eigen::Ref<const MatrixXs>& next_input);
+  void update(const Eigen::Ref<const MatrixXs>& next_input);
+  void update(MatrixXs&& next_input);
+  MatrixXs output() const;
+  MatrixXs output(const Eigen::Ref<const MatrixXs>& C,
+                  const Eigen::Ref<const MatrixXs>& D) const;
 
   LtiStateSpace system;
-  MatrixXs input;
-  MatrixXs state;
+  MatrixXs input;                                                                 // (system.N_u() [, N_b])
+  MatrixXs state;                                                                 // (system.N_x() [, N_b])
 };
 
-/*
- * Discretized Non-Linear Time-Invariant (NLTI) Low-Pass Filter (LPF). The 
- * continuous-time (i.e. non-discretized with sampling interval `dt`) state
- * space model takes the following form:
- *    x-dot(t) = -w_c(u(t)) x(t) + w_c(u(t)) u(t)
- *    y(t) = x(t)
- * where:
- *    w_c(u(t)) = 2 * pi * f_c(u(t))
- *    f_c(u(t)) = input_exp_cutoff_freq_prop_constant * exp(u(t))
- */
-class DiscreteNltiLpf {
+class BatchDiscreteLtiFilter{
  public:
-  DiscreteNltiLpf() = default;
-  DiscreteNltiLpf(double input_exp_cutoff_freq_prop_constant);
-  DiscreteNltiLpf(double input_exp_cutoff_freq_prop_constant,
-                  const control::RowVectorXs& init_input,
-                  const control::RowVectorXs& init_input_exp,
-                  const control::RowVectorXs& init_state);
-  const control::RowVectorXs& update(
-      const control::RowVectorXs& next_input,
-      const control::RowVectorXs& next_input_exp,
-      FloatType dt);
-  const control::RowVectorXs& update(
-      const control::RowVectorXs&& next_input,
-      const control::RowVectorXs&& next_input_exp,
-      FloatType dt);
-  static FloatType expint(FloatType z);
+  BatchDiscreteLtiFilter() = default;
+  BatchDiscreteLtiFilter(const BatchLtiStateSpace& system,
+                         const Eigen::Ref<const MatrixXs>& init_input,
+                         const Eigen::Ref<const MatrixXs>& init_state);
+  void update(const Eigen::Ref<const MatrixXs>& next_input);
+  void update(MatrixXs&& next_input);
+  MatrixXs output() const;
+  MatrixXs output(const std::vector<ArrayXXs>& C,
+                  const std::vector<ArrayXXs>& D) const;
 
-  double input_exp_cutoff_freq_prop_constant;
-  control::RowVectorXs input;
-  control::RowVectorXs input_exp;
-  control::RowVectorXs state;
+  BatchLtiStateSpace system;
+  MatrixXs input;                                                                 // (system.N_u(), system.N_b())
+  MatrixXs state;                                                                 // (system.N_x(), system.N_b())
 };
 
 } // namespace control
