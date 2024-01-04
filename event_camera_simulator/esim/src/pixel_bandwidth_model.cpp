@@ -1,4 +1,5 @@
 #include <esim/esim/pixel_bandwidth_model.hpp>
+#include <functional>
 #include <glog/logging.h>
 #include <ze/common/time_conversions.hpp>
 #include <opencv2/core/eigen.hpp>
@@ -430,9 +431,8 @@ FloatTypeImagePair PixelBandwidthModel::filter(
   }
 
   FloatTypeImagePair output_cv_log_img_pair;                                      // pair of source follower & differencing amplifier output OpenCV log-images
-  auto eigen2cv_log_img = [&](const control::MatrixXs& eigen_mat) {
-    return eigen2cv(eigen_mat, 1, log_img.size().height);                         // (height, width) OpenCV matrix with 1 channel
-  };
+  auto eigen2cv_log_img = std::bind(eigen2cv, std::placeholders::_1,
+                                    1, log_img.size().height);
   if (lti_subsys_order() > 0) {
     // FOH-discretize the LTI continuous-time sub-system, according to the
     // next image sampling interval `dt`
