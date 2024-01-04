@@ -11,6 +11,7 @@ set(HEADERS
     include/esim/esim/camera_simulator.hpp
     include/esim/esim/control.hpp
     include/esim/esim/pixel_bandwidth_model.hpp
+    include/esim/esim/exp_converging_line.hpp
 )
 
 set(SOURCES
@@ -19,6 +20,7 @@ set(SOURCES
     src/camera_simulator.cpp
     src/control.cpp
     src/pixel_bandwidth_model.cpp
+    src/exp_converging_line.cpp
 )
 
 cs_add_library(${PROJECT_NAME} ${SOURCES} ${HEADERS})
