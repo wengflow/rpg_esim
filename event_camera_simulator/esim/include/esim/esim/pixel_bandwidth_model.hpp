@@ -11,13 +11,14 @@ using StdVectorIntPair = std::pair<std::vector<int>, std::vector<int>>;
 using ArrayXb = Eigen::Array<bool, Eigen::Dynamic, 1>;
 static constexpr double kFromMilli = 1e-3;
 static constexpr double kFromMicro = 1e-6;
+static constexpr double kFromNano = 1e-9;
 static constexpr double kFromFemto = 1e-15;
 
 FloatTypeImage eigen2cv(const control::MatrixXs& eigen_mat,
                         int output_channels, int output_height);
 StdVectorIntPair getIndexPair(const Eigen::Ref<const ArrayXb>& condition);
 
-/*
+/**
  * The pixel bandwidth model is, in general, a 5th-order unity-gain Non-Linear
  * Time-Invariant (NLTI) continuous-time system that is formed by a cascade of:
  *    1. 1 x 2nd-order unity-gain NLTI Low-Pass Filter (LPF), which:
@@ -84,7 +85,14 @@ StdVectorIntPair getIndexPair(const Eigen::Ref<const ArrayXb>& condition);
  *       non-standard form, where their states match that of their continuous
  *       -time counterpart, to accommodate variations in image sampling interval
  *       `dt` and linearization steady-states (for NLTI sub-system)
- */
+ *    3. In practice, the differencing amplifier will be held in reset after
+ *       an event is generated, throughout the refractory period. This
+ *       effectively resets the state (i.e. output) of the differencing
+ *       amplifier 1st-order LTI LPF to its input (i.e. source follower buffer
+ *       1st-order LTI LPF output). Nonetheless, this is not considered in this
+ *       model (but in the event simulator), as the event generation timestamps
+ *       are unknown a priori.
+ **/
 class PixelBandwidthModel
 {
  public:
@@ -110,7 +118,7 @@ class PixelBandwidthModel
 
   void initState(const Image& init_log_img);
   FloatTypeImagePair filter(const Image& log_img, const Image& img,
-                            Duration dt_nanosec);
+                            Duration dt_ns);
 
  private:
   constexpr double A_loop() {

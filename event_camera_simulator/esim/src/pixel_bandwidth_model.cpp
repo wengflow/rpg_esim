@@ -68,8 +68,6 @@ PixelBandwidthModel::PixelBandwidthModel(
     CHECK_GT(val, 0);
     CHECK(!std::isinf(val));
   }
-  CHECK((f_c_diff_hz >= f_c_sf_hz)
-        || (f_c_diff_hz >= (A_loop() + 1) / (2 * EIGEN_PI * tau_out_)));
 
   // infer the desired system order & 1st-order LTI LPF/HPF cutoff (angular)
   // frequencies for the pixel bandwidth model
@@ -398,7 +396,7 @@ void PixelBandwidthModel::linearizeFohNltiLpf(
 FloatTypeImagePair PixelBandwidthModel::filter(
     const Image& log_img,                                                         // (height, width) OpenCV matrix with 1 channel
     const Image& img,                                                             // (height, width) OpenCV matrix with 1 channel
-    Duration dt_nanosec) {
+    Duration dt_ns) {
   CHECK_EQ(log_img.channels(), 1);
   CHECK_EQ(img.channels(), 1);
 
@@ -412,7 +410,7 @@ FloatTypeImagePair PixelBandwidthModel::filter(
   cv::cv2eigen(input_cv_img_rvec, input_eigen_img_rvec);                          // copy involved, (1, num_pixels)
 
   // convert the sampling interval from nanoseconds to seconds
-  const FloatType dt = ze::nanosecToSecTrunc(dt_nanosec);
+  const FloatType dt = ze::nanosecToSecTrunc(dt_ns);
 
   control::MatrixXs nlti_subsys_output;
   if (nlti_subsys_order() > 0) {

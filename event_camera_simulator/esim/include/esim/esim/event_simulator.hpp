@@ -2,6 +2,8 @@
 
 #include <esim/common/types.hpp>
 #include <esim/esim/pixel_bandwidth_model.hpp>
+#include <esim/esim/exp_converging_line.hpp>
+#include <math.h>
 
 namespace event_camera_simulator {
 
@@ -62,7 +64,8 @@ public:
                              config.f_c_sf_hz,
                              config.f_c_diff_hz,
                              log(0.5 + config.log_eps)),
-      last_time_(0),
+      omega_c_diff_{kFromNano * 2 * M_PI * config.f_c_diff_hz},
+      leak_log_it_grad_{kFromNano * config_.leak_rate_hz * config_.Cp},
       config_(config)
   {}
 
@@ -73,14 +76,16 @@ private:
 
   bool is_initialized_;
   PixelBandwidthModel pixel_bandwidth_model_;
+  FloatType omega_c_diff_;      // in radians per nanoseconds
   FloatTypeImage last_sf_log_img_;
   FloatTypeImage last_diff_log_img_;
   Time last_time_;
   FloatTypeImage ref_sf_log_img_;
+  FloatTypeImage ref_diff_log_img_;
   TimestampImage ref_timestamp_;
   FloatTypeImage per_pixel_Cp_;
   FloatTypeImage per_pixel_Cm_;
-  FloatType leak_gradient_;
+  FloatType leak_log_it_grad_;  // in log-intensity per nanoseconds
   cv::Size size_;
 
   Config config_;
