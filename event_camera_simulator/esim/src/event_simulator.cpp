@@ -80,12 +80,12 @@ Events EventSimulator::imageCallback(const ColorImage& color_img, Time time)
     cv::exp(img, img);
   }
 
-  // add the dark current-equivalent image pixel intensity (i.e. dark
-  // intensity), and if necessary an epsilon value, to the image & then convert
-  // it to a log-image
-  const FloatType dark_it = (config_.I_dark_fa * kFromFemto)
-                            / (config_.I_p_to_it_ratio_fa * kFromFemto);
-  img += dark_it;
+  // add the dark current-equivalent image pixel intensity (i.e. black level),
+  // and if necessary an epsilon value, to the image & then convert it to a
+  // log-image
+  const FloatType black_level = (config_.I_dark_fa * kFromFemto)
+                                / (config_.I_p_to_it_ratio_fa * kFromFemto);
+  img += black_level;
   if(config_.use_log_image) {
     LOG_FIRST_N(INFO, 1) << "Adding eps = " << config_.log_eps 
                          << " to the image before log-image conversion.";

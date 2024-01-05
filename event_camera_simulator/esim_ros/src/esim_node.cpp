@@ -34,8 +34,8 @@ DEFINE_double(dark_current_fa, 0.0,
               "Photodiode dark current `I_dark`, in fA. The photocurrent"
               " `I = I_p + I_dark`. When `I_p_to_it_ratio` approaches"
               " infinity, then `I_dark` is effectively 0 / dark current"
-              " -equivalent image pixel intensity (i.e. dark intensity)"
-              " `dark_it = I_dark / I_p_to_it_ratio` is 0.");
+              " -equivalent image pixel intensity (i.e. black level)"
+              " `black_level = I_dark / I_p_to_it_ratio` is 0.");
 
 DEFINE_double(amplifier_gain, std::numeric_limits<double>::infinity(),
               "Amplifier gain of the photoreceptor circuit `A_amp`");

@@ -60,11 +60,11 @@ StdVectorIntPair getIndexPair(const Eigen::Ref<const ArrayXb>& condition);
  *       when `A_amp` is infinite
  * where `omega_c = 2 * pi * f_c` is the cutoff angular frequency.
  * 
- * The input to the model is the dark intensity-accounted image pixel
- * log-intensity `log(it + dark_it)`, which is equal to the photocurrent
- * -equivalent image pixel log-intensity `log(I / I_p_to_it_ratio)`. The outputs
- * of the model are the outputs of the source follower buffer & differencing
- * amplifier 1st-order LTI LPFs.
+ * The input to the model is the black level-accounted image pixel log-intensity
+ * `log(it + black_level)`, which is equal to the photocurrent-equivalent image
+ * pixel log-intensity `log(I / I_p_to_it_ratio)`. The outputs of the model are
+ * the outputs of the source follower buffer & differencing amplifier 1st-order
+ * LTI LPFs.
  *
  * The pixel bandwidth model is implemented as a Linear Time-Varying (LTV)
  * discrete-time system by:
