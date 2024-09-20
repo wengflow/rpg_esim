@@ -1,6 +1,8 @@
 # ESIM: an Open Event Camera Simulator
 
-This repository contains the source code for the improved [ESIM](https://rpg.ifi.uzh.ch/esim.html) event camera simulator used in **Robust *e*-NeRF** <sub>[![Project Page](https://img.shields.io/badge/Project_Page-black
+This repository contains the source code for the improved [ESIM](https://rpg.ifi.uzh.ch/esim.html) event camera simulator used in **Deblur *e*-NeRF** <sub>[![Project Page](https://img.shields.io/badge/Project_Page-black
+)](https://wengflow.github.io/deblur-e-nerf) [![arXiv](https://img.shields.io/badge/arXiv-black)](https://arxiv.org/abs/2309.08596) [![Code](https://img.shields.io/badge/Code-black)](https://github.com/wengflow/deblur-e-nerf) [![Dataset](https://img.shields.io/badge/Dataset-black
+)](https://huggingface.co/datasets/wengflow/deblur-e-nerf)</sub> and **Robust *e*-NeRF** <sub>[![Project Page](https://img.shields.io/badge/Project_Page-black
 )](https://wengflow.github.io/robust-e-nerf) [![arXiv](https://img.shields.io/badge/arXiv-black)](https://arxiv.org/abs/2309.08596) [![Code](https://img.shields.io/badge/Code-black)](https://github.com/wengflow/robust-e-nerf) [![Dataset](https://img.shields.io/badge/Dataset-black
 )](https://huggingface.co/datasets/wengflow/robust-e-nerf)</sub>. In particular, we incorporate the following changes:
 
@@ -11,6 +13,8 @@ This repository contains the source code for the improved [ESIM](https://rpg.ifi
    - Model junction leakage, which increases the rate of ON events and decreases the rate of OFF events
    - Modify the pixel-to-pixel contrast threshold variation model to be time-independent
    - Merge `feature/color` branch to support color event cameras
+   - Model dark current
+   - Accurately model the band-limiting behavior of the pixel with a 5th-order Non-Linear Time-Invariant (NLTI) Low-Pass Filter (LPF)
 2. Rendering engine
    - Support [Blender](https://www.blender.org) as a rendering engine
    - Support [Unreal Engine](https://www.unrealengine.com) 4.27.2 with a modified [UnrealCV](https://unrealcv.org/) plugin
@@ -20,6 +24,14 @@ This repository contains the source code for the improved [ESIM](https://rpg.ifi
    - Fix various bugs & installation errors
 
 If you use this improved version of ESIM for your work, please cite:
+```bibtex
+@inproceedings{low2024_deblur-e-nerf,
+  title = {Deblur e-NeRF: NeRF from Motion-Blurred Events under High-speed or Low-light Conditions},
+  author = {Low, Weng Fei and Lee, Gim Hee},
+  booktitle = {European Conference on Computer Vision (ECCV)},
+  year = {2024}
+}
+```
 
 ```bibtex
 @inproceedings{low2023_robust-e-nerf,
@@ -41,7 +53,7 @@ If you use this improved version of ESIM for your work, please cite:
 
 ## Installation
 
-The following installation steps were tested on Ubuntu 20.04 and 22.04 with GTX 1080 Ti, RTX 3090 and RTX A5000 GPUs.
+The following installation steps were tested on Ubuntu 20.04 and 22.04 with GTX 1080 Ti, RTX 3090, RTX 4090, RTX A5000 and RTX 6000 GPUs.
 
 ### ESIM
 
@@ -111,7 +123,9 @@ The installation steps described above were consolidated from the following sour
 
 To use Blender as the rendering engine, we require [Blender as a Python module](https://docs.blender.org/api/current/info_advanced_blender_as_bpy.html) being installed in a separate `blender` Conda environment with a compatible Python version and [PyZMQ](https://pyzmq.readthedocs.io/en/latest/) also installed.
 
-We provide a Python wheel for Blender 3.4.0 at [this link](https://github.com/wengflow/rpg_esim/releases/download/v1.0/bpy-3.4.0a0-cp310-cp310-manylinux_2_31_x86_64.whl), which is compiled with [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit) 11.4 and [NVIDIA OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix) 7.3.0 support (requires NVIDIA R465.84 driver or newer), for Linux and Python 3.10. The `blender` environment may be created with all the necessary dependencies, including this wheel, with the following:
+We provide two Python wheels for Blender 3.4.0, which were compiled with [CUDA Toolkit](https://developer.nvidia.com/cuda-toolkit) 11.4/11.8 and [NVIDIA OptiX](https://developer.nvidia.com/rtx/ray-tracing/optix) 7.3.0 support (requires NVIDIA R465.84 driver or newer), for Linux and Python 3.10. They are available [here (CUDA Toolkit 11.4)](https://github.com/wengflow/rpg_esim/releases/download/v1.0/bpy-3.4.0a0-cp310-cp310-manylinux_2_31_x86_64.whl) and [here (CUDA Toolkit 11.8)](https://github.com/wengflow/rpg_esim/releases/download/v2.0/bpy-3.4.0a0-cp310-cp310-manylinux_2_31_x86_64.whl).
+
+The `blender` environment may be created with all the necessary dependencies, including the wheel compiled with CUDA Toolkit 11.8, with the following:
    ```bash
    conda env create -f rpg_esim/blender_environment.yml
    ```
