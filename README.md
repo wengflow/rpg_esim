@@ -1,7 +1,7 @@
 # ESIM: an Open Event Camera Simulator
 
 This repository contains the source code for the improved [ESIM](https://rpg.ifi.uzh.ch/esim.html) event camera simulator used in **Deblur *e*-NeRF** <sub>[![Project Page](https://img.shields.io/badge/Project_Page-black
-)](https://wengflow.github.io/deblur-e-nerf) [![arXiv](https://img.shields.io/badge/arXiv-black)](https://arxiv.org/abs/2309.08596) [![Code](https://img.shields.io/badge/Code-black)](https://github.com/wengflow/deblur-e-nerf) [![Dataset](https://img.shields.io/badge/Dataset-black
+)](https://wengflow.github.io/deblur-e-nerf) [![arXiv](https://img.shields.io/badge/arXiv-black)](https://arxiv.org/abs/2409.17988) [![Code](https://img.shields.io/badge/Code-black)](https://github.com/wengflow/deblur-e-nerf) [![Dataset](https://img.shields.io/badge/Dataset-black
 )](https://huggingface.co/datasets/wengflow/deblur-e-nerf)</sub> and **Robust *e*-NeRF** <sub>[![Project Page](https://img.shields.io/badge/Project_Page-black
 )](https://wengflow.github.io/robust-e-nerf) [![arXiv](https://img.shields.io/badge/arXiv-black)](https://arxiv.org/abs/2309.08596) [![Code](https://img.shields.io/badge/Code-black)](https://github.com/wengflow/robust-e-nerf) [![Dataset](https://img.shields.io/badge/Dataset-black
 )](https://huggingface.co/datasets/wengflow/robust-e-nerf)</sub>. In particular, we incorporate the following changes:
